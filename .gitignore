@@ -130,3 +130,6 @@ dmypy.json
 
 #custom
 *.npy
+*.ann
+*.db
+*.json
