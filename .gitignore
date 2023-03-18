@@ -133,3 +133,4 @@ dmypy.json
 *.ann
 *.db
 *.json
+text_files/
