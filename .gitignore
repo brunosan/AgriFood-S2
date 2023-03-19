@@ -134,3 +134,4 @@ dmypy.json
 *.db
 *.json
 text_files/
+.DS_Store
