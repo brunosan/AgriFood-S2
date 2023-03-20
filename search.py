@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
+# In[8]:
 
 
 import psycopg2
@@ -64,14 +64,14 @@ db_config = {
 
 
 
-# In[6]:
+# In[9]:
 
 
 #convert this notebook to a python script
 get_ipython().system('jupyter nbconvert --to script search.ipynb')
 
 
-# In[7]:
+# In[14]:
 
 
 # Define the query
@@ -81,7 +81,7 @@ query = "Main challengues for Climate Smart Agriculture"
 results = search(query, model, db_config)
 # Print the results
 for project_id, chunk, distance in results:
-    project = next((p for p in projects if p["ids"] == [project_id]), None)
+    project = next((p for p in projects if ",".join(p["ids"]) == project_id), None)
     print(f"Project ID: {project_id}")
     print(f"Project title: {project['title']}")
     print(f"Project abstract: {project['abstract']}")
