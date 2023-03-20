@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[7]:
 
 
 #if needed 
 #!set_db.sh
 
 
-# In[90]:
+# In[8]:
 
 
 import re
@@ -71,8 +71,14 @@ def split_sentence(sentence: str, max_length: int=MAX_TOKENS) -> List[str]:
 
     return chunks
 
-def chunk_splitter(input_string: str, max_length: int = MAX_TOKENS, special_string: str = special_splitter) -> List[str]:
+def chunk_splitter(input_string: str, 
+                   max_length: int = MAX_TOKENS, 
+                   special_string: str = special_splitter,
+                   prefix:str = None,
+                   clean:bool = True) -> List[str]:
 
+    if clean:
+        input_string = clean_text(input_string)
     sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', input_string)
     flat_sentences = []
     for sentence in sentences:
@@ -101,6 +107,9 @@ def chunk_splitter(input_string: str, max_length: int = MAX_TOKENS, special_stri
     if chunk:
         chunks.append(" ".join(chunk))
 
+    if prefix is not None:
+        chunks = [prefix + chunk for chunk in chunks]
+
     return chunks
 
 # Add these lines to register np.ndarray for psycopg2
@@ -116,12 +125,14 @@ def fetch_openai(model,chunk):
     return response
 
 def openai_embeddings(model,chunks):
+    if isinstance(chunks, str):
+        chunks = [chunks]
     i=0
     sentence_embeddings =[]
     for chunk in chunks:
         i+=1
         if i % 50 == 0:
-            log(f"Doing -> Embedding chunk: {i} of {len(chunks)}. Chunk:\n\t {chunk}...")
+            log(f"Doing -> Embedding chunk: {i} of {len(chunks)}. Chunk ({len(chunk.split())} tokens):\n\t {chunk}...")
         
         try:
             response = fetch_openai(model,chunk)
@@ -143,11 +154,6 @@ def project_exists(project_id, conn):
 def process_project(thread_id, project):
     retrieve_full_text(project)
     project["keywords"] = project["keywords"].replace(";", ". ").replace(",", ". ")
-    project["full_text"] = "Title: "    + project["title"] + special_splitter +\
-                           "Abstract: " + project["abstract"] + special_splitter +\
-                           "Fullt text: " + project["full_text"]
-                           #"Keywords: " + project["keywords"] + special_splitter #bad results
-    project["full_text"] = clean_text(project["full_text"])
 
     local_counter = 1
     with psycopg2.connect(**db_config) as conn:
@@ -155,7 +161,13 @@ def process_project(thread_id, project):
         if project_exists(project_id, conn):
             log(f"Skipping -> Project {project['title']} already exists in the table.")
             return
-        chunks = chunk_splitter(project["full_text"])
+        
+        retrieve_full_text(project)
+        chunks = chunk_splitter(project["full_text"], prefix="TX: ")
+        chunks.extend(chunk_splitter(project["title"]   , prefix="Title: "))
+        chunks.extend(chunk_splitter(project["abstract"], prefix="Abstract: "))
+        chunks.extend(chunk_splitter(project["keywords"], prefix="Keywords: "))
+
         log(f"Starting -> {len(chunks)} chunks for project {project['title']}.")
         sentence_embeddings = openai_embeddings(model,chunks)
         c = conn.cursor()
@@ -171,17 +183,16 @@ def process_project(thread_id, project):
 
 
 
-# In[8]:
+# In[9]:
 
 
-#convert notebook to python
 get_ipython().system('jupyter nbconvert --to script tokenize_sentences2db.ipynb')
 
 
-# In[91]:
+# In[10]:
 
 
-reset_db = True #drop table and create new one
+reset_db = False #drop table and create new one
 
 # Database configuration
 db_config = {
@@ -220,93 +231,11 @@ with open("digital_agriculture_projects.json", "r") as f:
 counter = 1
 counter_lock = Lock()
 
-# Process texts and save embeddings into the database using 8 threads
+
+Process texts and save embeddings into the database using 8 threads
 with ThreadPoolExecutor(max_workers=2) as executor:
-    for i, _ in enumerate(executor.map(process_project, range(len(projects[:3])), projects[:])):
+    for i, _ in enumerate(executor.map(process_project, range(len(projects[:])), projects[:])):
         pass
-
-
-# In[85]:
-
-
-import re
-from typing import List
-
-def split_sentence(sentence: str, max_length: int) -> List[str]:
-    comma_parts = sentence.split(', ')
-    chunks = []
-    current_chunk = []
-
-    for part in comma_parts:
-        words = part.split()
-
-        if len(current_chunk) + len(words) + 1 <= max_length:  # +1 for space between comma parts
-            current_chunk.extend(words)
-        else:
-            if current_chunk:
-                chunks.append(" ".join(current_chunk))
-                current_chunk = []
-
-            if len(words) > max_length:
-                for i in range(0, len(words), max_length):
-                    sub_chunk = words[i:i + max_length]
-                    chunks.append(" ".join(sub_chunk))
-            else:
-                current_chunk.extend(words)
-
-    if current_chunk:
-        chunks.append(" ".join(current_chunk))
-
-    return chunks
-
-def chunk_string(input_string: str, max_length: int, special_string: str = "#!#") -> List[str]:
-
-    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', input_string)
-    flat_sentences = []
-    for sentence in sentences:
-        flat_sentences.extend(sentence.split(special_string))
-    sentences = flat_sentences
-
-    #deal with sentences that are longer than max_length, by splitting them into max chunks of ","
-    sentences = [split_sentence(sentence, max_length) for sentence in sentences]
-    sentences = [item for sublist in sentences for item in sublist]  # Flatten the list of sentences
-
-    chunks = []
-    chunk = []
-
-    for sentence in sentences:
-        words = sentence.split()
-        
-        if len(chunk) + len(words) + 1 <= max_length:  # +1 for space between sentences
-            chunk.extend(words)
-        else:
-            #adding words to the chunk would exceed the max length
-            if chunk:
-                chunks.append(" ".join(chunk))
-                chunk = []    
-            chunk.extend(words)
-    #last chunk
-    if chunk:
-        chunks.append(" ".join(chunk))
-
-    return chunks
-
-# Example usage
-with open("digital_agriculture_projects.json", "r") as f:
-    projects = json.load(f)
-project=projects[2]
-retrieve_full_text(project)
-project["full_text"]="words words words words words words words, in sentence. another sentence. "+project["full_text"]
-chunks = chunk_string(project["full_text"], max_length=50, special_string="#!#")
-print("OUTOUT:")
-for chunk in chunks[20:30]:
-    print(len(chunk.split(" ")),chunk)
-
-
-# In[78]:
-
-
-
 
 
 # In[ ]:
