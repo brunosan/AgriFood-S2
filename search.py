@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[6]:
+# In[11]:
 
 
 import psycopg2
@@ -10,9 +10,7 @@ import numpy as np
 
 #importing local modules
 from tokenize_sentences2db import openai_embeddings,log
-import importlib
-#importlib.reload(chunk_splitter)
-#importlib.reload(openai_embeddings)
+
 
 # Function to perform the search
 def search(query, model, db_config,number_of_results):
@@ -26,14 +24,14 @@ def search(query, model, db_config,number_of_results):
 
         # Search for the top projects by cosine similarity
         c.execute("""
-            SELECT project_id, chunk, embedding <-> %s::VECTOR AS distance
+            SELECT project_id, chunk, embedding <=> %s::VECTOR AS distance
             FROM embeddings_openai
-            ORDER BY distance ASC
+            ORDER BY distance DESC
             LIMIT %s;
         """, (list(query_embedding), number_of_results))
         
         results = c.fetchall()
-    
+    log("Done! Found {} results.".format(len(results)))
     return results
 
 
@@ -48,14 +46,14 @@ db_config = {
 
 
 
-# In[3]:
+# In[12]:
 
 
 #convert this notebook to a python script
 get_ipython().system('jupyter nbconvert --to script search.ipynb')
 
 
-# In[7]:
+# In[13]:
 
 
 model="text-embedding-ada-002"
@@ -75,7 +73,7 @@ with open("digital_agriculture_projects.json", "r") as f:
     projects = json.load(f)
 
 # Define the query
-query = "Remote sensing for fertilizer management"
+query = "Satellite Remote sensing for agriculture"
 
 # Perform the search
 results = search(query, model, db_config,number_of_results)
@@ -89,6 +87,30 @@ for project_id, chunk, distance in results:
     print(f"Relevant snippet: {chunk}")
     print(f"Distance: {distance}")
     print("\n")
+
+
+# In[14]:
+
+
+query_embedding = openai_embeddings(model,query)
+
+
+# In[18]:
+
+
+len(query_embedding[0])
+
+
+# In[16]:
+
+
+query
+
+
+# In[17]:
+
+
+query_embedding
 
 
 # In[ ]:
