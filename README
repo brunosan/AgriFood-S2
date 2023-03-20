@@ -1,0 +1,7 @@
+# Quick explanation
+
+1. `set_db.sh` install the right stuff and preps the postgres [on osx].
+2. `get_project_data.ipynb` pulls from the WB API the project info related to Ag.
+3. `get_fulltext.ipynb` downloads the flat text version of each P project.
+4. `tokenize_sentences2db.ipynb` iterates over each project, pulling the full text, chunking the text [and title, abstract, ...],gettign the embedd of each chunk, and storing it in the db.
+5. `search.py` is a sample search script that embeds the query, and then searches the db for the closest match, pulling the associated project info.

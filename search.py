@@ -1,57 +1,39 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[8]:
+# In[11]:
 
 
 import psycopg2
 import json
 import numpy as np
-from annoy import AnnoyIndex
-from sentence_transformers import SentenceTransformer
 
-number_of_results = 5
+#importing local modules
+from tokenize_sentences2db import openai_embeddings,log
 
-# Database configuration
-db_config = {
-    'dbname': 'wb_s2_embeddings',
-    'user': 's2',
-    'password': 'wb@s2',
-    'host': 'localhost',
-    'port': 5432
-}
-
-model = SentenceTransformer('sentence-transformers/paraphrase-mpnet-base-v2')
-
-# Load the projects
-with open("digital_agriculture_projects.json", "r") as f:
-    projects = json.load(f)
 
 # Function to perform the search
-def search(query, model, db_config):
+def search(query, model, db_config,number_of_results):
     # Encode the query
-    query_embedding = model.encode([query])[0]
-    query_embedding = [float(value) for value in query_embedding]
-
-    
+    log("Encoding the query...")
+    query_embedding = openai_embeddings(model,query)[0]
+    log("Finding the most similar projects...")
     # Connect to the database
     with psycopg2.connect(**db_config) as conn:
         c = conn.cursor()
 
         # Search for the top projects by cosine similarity
         c.execute("""
-            SELECT project_id, chunk, embedding <-> %s::VECTOR AS distance
-            FROM embeddings
+            SELECT project_id, chunk, embedding <=> %s::VECTOR AS distance
+            FROM embeddings_openai
             ORDER BY distance DESC
             LIMIT %s;
         """, (list(query_embedding), number_of_results))
         
         results = c.fetchall()
-    
+    log("Done! Found {} results.".format(len(results)))
     return results
 
-# Initialize the model
-model = SentenceTransformer('sentence-transformers/paraphrase-mpnet-base-v2')
 
 # Define the database configuration
 db_config = {
@@ -64,21 +46,38 @@ db_config = {
 
 
 
-# In[9]:
+# In[12]:
 
 
 #convert this notebook to a python script
 get_ipython().system('jupyter nbconvert --to script search.ipynb')
 
 
-# In[14]:
+# In[13]:
 
+
+model="text-embedding-ada-002"
+number_of_results = 5
+
+# Database configuration
+db_config = {
+    'dbname': 'wb_s2_embeddings',
+    'user': 's2',
+    'password': 'wb@s2',
+    'host': 'localhost',
+    'port': 5432
+}
+
+# Load the projects
+with open("digital_agriculture_projects.json", "r") as f:
+    projects = json.load(f)
 
 # Define the query
-query = "Main challengues for Climate Smart Agriculture"
+query = "Satellite Remote sensing for agriculture"
 
 # Perform the search
-results = search(query, model, db_config)
+results = search(query, model, db_config,number_of_results)
+results[::-1]
 # Print the results
 for project_id, chunk, distance in results:
     project = next((p for p in projects if ",".join(p["ids"]) == project_id), None)
@@ -88,6 +87,30 @@ for project_id, chunk, distance in results:
     print(f"Relevant snippet: {chunk}")
     print(f"Distance: {distance}")
     print("\n")
+
+
+# In[14]:
+
+
+query_embedding = openai_embeddings(model,query)
+
+
+# In[18]:
+
+
+len(query_embedding[0])
+
+
+# In[16]:
+
+
+query
+
+
+# In[17]:
+
+
+query_embedding
 
 
 # In[ ]:
