@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[11]:
+# In[104]:
 
 
 import psycopg2
 import json
 import numpy as np
+import openai
 
 #importing local modules
 from tokenize_sentences2db import openai_embeddings,log
@@ -26,7 +27,7 @@ def search(query, model, db_config,number_of_results):
         c.execute("""
             SELECT project_id, chunk, embedding <=> %s::VECTOR AS distance
             FROM embeddings_openai
-            ORDER BY distance DESC
+            ORDER BY distance ASC
             LIMIT %s;
         """, (list(query_embedding), number_of_results))
         
@@ -34,87 +35,90 @@ def search(query, model, db_config,number_of_results):
     log("Done! Found {} results.".format(len(results)))
     return results
 
+# Function to generate a summary using OpenAI
+def generate_summary(question, context_sections, query):
+    prompt = f"""
+    You are a World Bank expert with access to all Bank projects who loves
+    to help people! Given the following Question and top answers, provide a
+    summary of the top results that answers the question and refers to the
+    results, whith links, outputted in markdown format. Use only the provided 
+    results to create your answer.
+    If you are unsure say why and offer a similar question that might
+    point the users and you in the right direction.
 
-# Define the database configuration
-db_config = {
-    'dbname': 'wb_s2_embeddings',
-    'user': 's2',
-    'password': 'wb@s2',
-    'host': 'localhost',
-    'port': 5432
-}
+    Question:
+    {query}
 
+    Top hits ordered by cosine similarity of the snippet embedding to the query embedding:
+    {context_sections}
+    """
 
+    # In production, we should handle possible errors
+    completion_response = openai.Completion.create(
+            prompt=prompt,
+            temperature=0,
+            max_tokens=512,  # Choose the max allowed tokens in completion
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            model='text-davinci-003')
 
-# In[12]:
+    return completion_response.choices[0].text.strip()
 
+def manage_results(projects,query,results):
+    # Create a string with the results
+    results_text = ""
+    for project_id, chunk, distance in results:
+        project = None
+        for p in projects:
+            if ",".join(p["ids"]) == project_id:
+                project = p
+                break
+        results_text += f"\nProject ID: {project_id}\n"
+        results_text += f"Project title: {project['title']}\n"
+        results_text += f"Project url: {project['url']}\n"
+        results_text += f"Project abstract: {project['abstract']}\n"
+        results_text += f"Relevant snippet: {chunk}\n"
+        results_text += f"Distance: {distance}\n"
 
-#convert this notebook to a python script
-get_ipython().system('jupyter nbconvert --to script search.ipynb')
-
-
-# In[13]:
-
-
-model="text-embedding-ada-002"
-number_of_results = 5
-
-# Database configuration
-db_config = {
-    'dbname': 'wb_s2_embeddings',
-    'user': 's2',
-    'password': 'wb@s2',
-    'host': 'localhost',
-    'port': 5432
-}
-
-# Load the projects
-with open("digital_agriculture_projects.json", "r") as f:
-    projects = json.load(f)
-
-# Define the query
-query = "Satellite Remote sensing for agriculture"
-
-# Perform the search
-results = search(query, model, db_config,number_of_results)
-results[::-1]
-# Print the results
-for project_id, chunk, distance in results:
-    project = next((p for p in projects if ",".join(p["ids"]) == project_id), None)
-    print(f"Project ID: {project_id}")
-    print(f"Project title: {project['title']}")
-    print(f"Project abstract: {project['abstract']}")
-    print(f"Relevant snippet: {chunk}")
-    print(f"Distance: {distance}")
-    print("\n")
+    # Generate the summary using OpenAI
+    log("Generating summary...")
+    summary = generate_summary(query, results_text, query)
+    return summary, results_text
 
 
-# In[14]:
+# In[103]:
 
 
-query_embedding = openai_embeddings(model,query)
 
 
-# In[18]:
-
-
-len(query_embedding[0])
-
-
-# In[16]:
-
-
-query
-
-
-# In[17]:
-
-
-query_embedding
 
 
 # In[ ]:
 
 
+if __name__ == "__main__":
+    model="text-embedding-ada-002"
+    number_of_results = 5
 
+    # Database configuration
+    db_config = {
+        'dbname': 'wb_s2_embeddings',
+        'user': 's2',
+        'password': 'wb@s2',
+        'host': 'localhost',
+        'port': 5432
+    }
+
+    # Load the projects
+    with open("digital_agriculture_projects.json", "r") as f:
+        projects = json.load(f)
+    # Define the query
+    query = "Main challengues and oportunities to deploy Satellite Remote sensing for fertilizer management."
+    # Perform the search
+    results = search(query, model, db_config,number_of_results)
+    summary, results_text = manage_results(projects,query,results)
+    # Print the summary
+    log(summary)
+    log(results_text)
 

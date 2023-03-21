@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results</title>
+    <!-- Add Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<style>
+    .loader {
+        position: fixed;
+        z-index: 1000;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .loader .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        color: #007bff;
+    }
+</style>
+
+<body>
+    <div class="loader">
+        <div class="spinner-border" role="status">
+            <span class="sr-only">Retrieving results...</span>
+        </div>
+    </div>
+    <div class="container-fluid">
+        <h1 class="mt-4">Query:</h1>
+        <p>{{ query }}</p>
+        <h2 class="mt-4">Summary:</h2>
+        {{ summary|safe }}
+        <h2 class="mt-4">Top Results:</h2>
+        <div class="row">
+            {% set project = [] %}
+            {% for project_id, chunk, distance in results %}
+                {% for p in projects %}
+                    {% if ",".join(p["ids"]).strip() == project_id.strip() %}
+                        {% set temp = project.append(p) %}
+                    {% endif %}
+                {% endfor %}
+                <div class="col-12">
+                    <div class="card mb-4">
+                        <div class="card mb-4">
+                            <div class="card-body">
+                              <h3 class="card-title">{{ project[-1]["title"] }}</h3>
+                              <ul class="list-group list-group-flush">
+                                <li class="list-group-item"><p class="blockquote-footer">Snippet: {{ chunk }}</p></li>
+                                <li class="list-group-item"><p class="card-text">                              
+                                    <h6 class="card-subtitle mb-2 text-muted">Abstract:</h6>
+                                    {{ project[-1]["abstract"] }}</p></li>
+                                <li class="list-group-item"><p class="card-text"><a href="{{ project[-1]['url'] }}" target="_blank">{{ project_id }}</a> | <small class="text-muted">Distance: {{ distance }}</small></p></li>
+                              </ul>
+                            </div>
+                          </div>
+                          
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Add Bootstrap JavaScript and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $(".loader").hide(); // hide the loader by default
+    
+            // show the loader when the form is submitted
+            $("form").submit(function () {
+                $(".loader").show();
+            });
+        });
+    </script>
+</body>
+</html>
