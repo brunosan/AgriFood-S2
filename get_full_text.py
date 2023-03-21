@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[29]:
+# In[1]:
 
 
 import json
@@ -43,30 +43,22 @@ def retrieve_full_text(document):
     return
 
 
-# Create a folder to store text files
-text_folder = "text_files"
-os.makedirs(text_folder, exist_ok=True)
-
-# Load the projects
-with open("digital_agriculture_projects.json", "r") as f:
-    projects = json.load(f)
-
-i=0
-for project in projects:
-    retrieve_full_text(project)
-    i+=1
-    print(f"Processed {i} projects out of {len(projects)}", end="\r")
-
-
-# In[30]:
-
-
-#convert this notebook to a python script
-get_ipython().system('jupyter nbconvert --to script get_full_text.ipynb')
-
 
 # In[ ]:
 
 
+if __name__ == "__main__":
+    # Create a folder to store text files
+    text_folder = "text_files"
+    os.makedirs(text_folder, exist_ok=True)
 
+    # Load the projects
+    with open("digital_agriculture_projects.json", "r") as f:
+        projects = json.load(f)
+
+    i=0
+    for project in projects:
+        retrieve_full_text(project)
+        i+=1
+        print(f"Processed {i} projects out of {len(projects)}", end="\r")
 

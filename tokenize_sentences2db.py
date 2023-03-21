@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[7]:
+# In[1]:
 
 
 #if needed 
 #!set_db.sh
 
 
-# In[8]:
+# In[6]:
 
 
 import re
@@ -183,63 +183,52 @@ def process_project(thread_id, project):
 
 
 
-# In[9]:
+# In[7]:
 
 
-get_ipython().system('jupyter nbconvert --to script tokenize_sentences2db.ipynb')
+if __name__ == "__main__":
+    reset_db = False #drop table and create new one
 
+    # Database configuration
+    db_config = {
+        'dbname': 'wb_s2_embeddings',
+        'user': 's2',
+        'password': 'wb@s2',
+        'host': 'localhost',
+        'port': 5432
+    }
 
-# In[10]:
-
-
-reset_db = False #drop table and create new one
-
-# Database configuration
-db_config = {
-    'dbname': 'wb_s2_embeddings',
-    'user': 's2',
-    'password': 'wb@s2',
-    'host': 'localhost',
-    'port': 5432
-}
-
-model="text-embedding-ada-002"
+    model="text-embedding-ada-002"
 
 
 
-# Create a folder to store text files
-text_folder = "text_files"
+    # Create a folder to store text files
+    text_folder = "text_files"
 
-with psycopg2.connect(**db_config) as conn:
-    c = conn.cursor()
-    if reset_db:
-        log("Resetting database.")
-        c.execute("DROP TABLE IF EXISTS embeddings_openai;")
-        c.execute("DROP SEQUENCE IF EXISTS embeddings_openai_id_seq;")
-    c.execute('CREATE SEQUENCE IF NOT EXISTS embeddings_openai_id_seq;')
-    c.execute(f'CREATE TABLE IF NOT EXISTS embeddings_openai (id INTEGER PRIMARY KEY DEFAULT nextval(\'embeddings_openai_id_seq\'), project_id TEXT, chunk TEXT, embedding VECTOR({EMBEDDING_SIZE}));')
-    
-    conn.commit()
-
-
-# Load the projects
-with open("digital_agriculture_projects.json", "r") as f:
-    projects = json.load(f)
+    with psycopg2.connect(**db_config) as conn:
+        c = conn.cursor()
+        if reset_db:
+            log("Resetting database.")
+            c.execute("DROP TABLE IF EXISTS embeddings_openai;")
+            c.execute("DROP SEQUENCE IF EXISTS embeddings_openai_id_seq;")
+        c.execute('CREATE SEQUENCE IF NOT EXISTS embeddings_openai_id_seq;')
+        c.execute(f'CREATE TABLE IF NOT EXISTS embeddings_openai (id INTEGER PRIMARY KEY DEFAULT nextval(\'embeddings_openai_id_seq\'), project_id TEXT, chunk TEXT, embedding VECTOR({EMBEDDING_SIZE}));')
+        
+        conn.commit()
 
 
-# Initialize counter and lock
-counter = 1
-counter_lock = Lock()
+    # Load the projects
+    with open("digital_agriculture_projects.json", "r") as f:
+        projects = json.load(f)
 
 
-Process texts and save embeddings into the database using 8 threads
-with ThreadPoolExecutor(max_workers=2) as executor:
-    for i, _ in enumerate(executor.map(process_project, range(len(projects[:])), projects[:])):
-        pass
+    # Initialize counter and lock
+    counter = 1
+    counter_lock = Lock()
 
 
-# In[ ]:
-
-
-
+    #Process texts and save embeddings into the database using 8 threads
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        for i, _ in enumerate(executor.map(process_project, range(len(projects[:])), projects[:])):
+            pass
 

@@ -22,3 +22,6 @@ psql postgres -c "DROP DATABASE IF EXISTS $DATABASE_NAME;"
 
 psql postgres -c "CREATE DATABASE $DATABASE_NAME WITH OWNER $USERNAME;"
 psql postgres -c "CREATE EXTENSION IF NOT EXISTS vector;"
+psql postgres -c "create index on embeddings_openai 
+using ivfflat (embedding vector_cosine_ops)
+with (lists = 100);"
