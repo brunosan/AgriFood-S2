@@ -230,10 +230,19 @@ def deploy():
         log('Waiting for volume to be attached...')
         time.sleep(10)
 
-        # Allocate a new Elastic IP address
-        response = ec2.allocate_address(Domain='vpc')
-        elastic_ip = response['PublicIp']
-        log(f"Allocated Elastic IP address: {elastic_ip}")
+        # Assuming you have already created an EC2 resource object named 'ec2'
+        existing_ips = ec2.describe_addresses(Filters=[{'Name': 'domain', 'Values': ['vpc']}])['Addresses']
+        if existing_ips:
+            # Use the first available IP address
+            elastic_ip = existing_ips[0]['PublicIp']
+            response = ec2.associate_address(InstanceId=instance_id, PublicIp=elastic_ip)
+            log(f"Associated Elastic IP address {elastic_ip} with instance {response['AssociationId']}")
+        else:
+            log("No available Elastic IP addresses found")
+            # Allocate a new Elastic IP address
+            response = ec2.allocate_address(Domain='vpc')
+            elastic_ip = response['PublicIp']
+            log(f"Allocated Elastic IP address: {elastic_ip}")
 
         # Associate the Elastic IP address with the instance
         response = ec2.associate_address(InstanceId=instance_id, PublicIp=elastic_ip)
