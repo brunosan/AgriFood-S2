@@ -7,13 +7,55 @@ const supabase = createClient(SUPABASE_API_URL, SUPABASE_PUBLIC_KEY);
 const maxLengthChar = 500;
 
 $(document).ready(function () {
-    $('#search-button').click(async function () {
-        console.log('search button clicked');
-        const query = $('#search-input').val().trim();
-        const results = await fetchProjects(query);
-        await displayResults(results);
-      });
+    console.log("ready!");
+    $("#search-button").click(async function (event) {
+        event.preventDefault();
+        console.log("clicked!");
+        $(".spinner").show();
+        //$("#results").empty();
+        try {
+            //console.log("Initiating search...");
+            const query = $('#search-input').val().trim();
+            //console.log(query);
+            const results = await fetchProjects(query);
+            //console.log(results);
+            await displayResults(results);
+        } catch (error) {
+            console.error('Error:', error);
+            $(".spinner").hide();
+            $("#results").html("<p>Error: " + error.message + "</p>");
+        }
+    });
+
+    $("#sample-query-button").click(function () {
+        const sampleQueries = [  
+            "digital solutions and risk for optimizing fertilizer management",
+            "digital tools and challenges for organic farming success",
+            "digital solutions for climate change impact in agriculture",
+            "digital solutions for food security challenges and opportunities",
+            "best practices and benefits of using digital tools for crop rotation",
+            "effective digital solutions for integrated pest management",
+            "éxito y complejidades de herramientas digitales en la agricultura orgánica",
+            "desafíos y oportunidades de soluciones digitales en la seguridad alimentaria",
+            "mejores prácticas y beneficios del uso de herramientas digitales en la rotación de cultivos",
+            "solutions numériques et risques pour optimiser la gestion des engrais en agriculture",
+            "outils numériques et défis pour réussir l'agriculture biologique",
+            "solutions numériques pour atténuer l'impact du changement climatique sur l'agriculture",
+            "meilleures pratiques et avantages de l'utilisation d'outils numériques dans la rotation des cultures",
+            "Digital solutions for fertilizer management and the risks involved",
+            "Successful cases of using blockchain for supply chain transparency in agriculture",
+            "How can satellite images be used to improve crop yield and mitigate risk?",
+            "Challenges and opportunities of implementing IOT in precision agriculture",
+            "Best practices for using digital tools for crop rotation",
+            "Effective digital solutions for integrated pest management"
+            ];
+        
+
+        const randomIndex = Math.floor(Math.random() * sampleQueries.length);
+        $("#search-input").val(sampleQueries[randomIndex]);
+    });
 });
+
 
 
 
@@ -33,6 +75,7 @@ function formatDate(dateString) {
 
 async function fetchProjects(query) {
     try {
+      //console.log('Fetching projects...')
       const response = await $.ajax({
         method: 'POST',
         url: 'https://afptefjaljkghrsmuyrf.functions.supabase.co/s3-edge', // Update this URL to match your Edge Function endpoint
@@ -42,7 +85,7 @@ async function fetchProjects(query) {
           },
         data: JSON.stringify({ query }),
       });
-  
+      //console.log('Projects fetched:', response)
       return response;
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -52,6 +95,7 @@ async function fetchProjects(query) {
   
 
   async function displayResults(results) {
+    $(".spinner").hide();
     const container = $('#results');
     container.empty();
   

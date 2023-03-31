@@ -29,6 +29,10 @@
     .arrow {
         margin-right: 10px;
     }
+
+    .spinner {
+        display: none;
+    }
   </style>
 </head>
 
@@ -36,14 +40,19 @@
 <body>
     <div class="container-fluid">
         <h1 class="text-center mt-4">WB Digital Agrifood Semantic Search</h1>
-        <p>What are you looking for?</p>
-        <div class="mt-4">
+        <form>
             <div class="form-group">
-                <input type="text" id="search-input" placeholder="Search..." value="Fertilizer management">
-                <button class="btn btn-primary" id="search-button">Search</button>
+              <label for="Search">What are you looking for?</label>
+              <input class="form-control" type="text" rows=3 id="search-input" aria-describedby="Help" placeholder="Search..."></input>
+              <small id="Help" class="form-text text-muted">We'll match the semantic meaning of the query with all text for all World Bank AG projects</small>
             </div>
-        </div>
+            <button type="submit" id="search-button" class="btn btn-primary">Search</button>
+            <button type="button" id="sample-query-button" class="btn btn-secondary">Type Sample Query</button>
+        </form>
         <div id="results" class="card-container"></div>
+        <div class="spinner">
+            <i class="fa fa-spinner fa-spin"></i> Loading...
+        </div>
         </div>
     </div>
 </body>
