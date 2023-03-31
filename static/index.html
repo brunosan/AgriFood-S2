@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WB Digital Agrifood Semantic Search</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script type="module" src="my_script.js"></script>
+  
+
+  <style>
+    .card-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+    }
+    .card {
+      margin: 10px;
+    }
+    .foldable-header {
+        cursor: pointer;
+    }
+
+    .foldable-content {
+        display: none;
+    }
+
+    .arrow {
+        margin-right: 10px;
+    }
+
+    .spinner {
+        display: none;
+    }
+  </style>
+</head>
+
+
+<body>
+    <div class="container-fluid">
+        <h1 class="text-center mt-4">WB Digital Agrifood Semantic Search</h1>
+        <form>
+            <div class="form-group">
+              <label for="Search">What are you looking for?</label>
+              <input class="form-control" type="text" rows=3 id="search-input" aria-describedby="Help" placeholder="Search..."></input>
+              <small id="Help" class="form-text text-muted">We'll match the semantic meaning of the query with all text for all World Bank AG projects</small>
+            </div>
+            <button type="submit" id="search-button" class="btn btn-primary">Search</button>
+            <button type="button" id="sample-query-button" class="btn btn-secondary">Type Sample Query</button>
+        </form>
+        <div id="results" class="card-container"></div>
+        <div class="spinner">
+            <i class="fa fa-spinner fa-spin"></i> Loading...
+        </div>
+        </div>
+    </div>
+</body>
+</html>
