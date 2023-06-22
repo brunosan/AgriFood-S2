@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[2]:
 
 
 import json
 import os
 import requests
 import re
+from pathlib import Path
 
+
+text_folder = Path("data/text_files/")
 
 def clean_text(text):
     out = text.replace('\n', ' ').strip()
@@ -44,16 +47,18 @@ def retrieve_full_text(document):
 
 
 
-# In[ ]:
+# In[3]:
 
 
 if __name__ == "__main__":
     # Create a folder to store text files
-    text_folder = "text_files"
+    
     os.makedirs(text_folder, exist_ok=True)
 
     # Load the projects
-    with open("digital_agriculture_projects.json", "r") as f:
+    metadata_projects_file = Path("data/digital_agriculture_projects.json")
+
+    with open(metadata_projects_file, "r") as f:
         projects = json.load(f)
 
     i=0

@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[8]:
 
 
 #if needed 
 #!set_db.sh
 
 
-# In[6]:
+# In[24]:
 
 
 import re
@@ -25,6 +25,8 @@ import datetime
 import os
 import openai
 import time
+import configparser
+import hashlib
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -143,11 +145,10 @@ def openai_embeddings(model,chunks):
         sentence_embeddings.append(response['data'][0]['embedding'])
     return sentence_embeddings
 
-def project_exists(project_id, conn):
+def entry_id_exists(entry_id, conn):
     c = conn.cursor()
-    c.execute("SELECT 1 FROM embeddings_openai WHERE project_id = %s LIMIT 1", (project_id,))
+    c.execute("SELECT 1 FROM embeddings_openai WHERE entry_id = %s LIMIT 1", (entry_id,))
     return c.fetchone() is not None
-
 
 
 # Function to process a project
@@ -157,8 +158,8 @@ def process_project(thread_id, project):
 
     local_counter = 1
     with psycopg2.connect(**db_config) as conn:
-        project_id = ",".join(project['ids'])
-        if project_exists(project_id, conn):
+        entry_id = "P:"+",".join(project['ids'])
+        if entry_id_exists(entry_id, conn):
             log(f"Skipping -> Project {project['title']} already exists in the table.")
             return
         
@@ -174,31 +175,55 @@ def process_project(thread_id, project):
         for chunk, embedding in zip(chunks, sentence_embeddings):
             unique_id = thread_id * 1000000 + local_counter
             chunk = chunk.replace('\x00', ' ')  # Replace NUL characters with a space
-            c.execute("INSERT INTO embeddings_openai (id, project_id, chunk, embedding) VALUES (%s, %s, %s, %s::VECTOR)", (unique_id, project_id, chunk, embedding))
+            c.execute("INSERT INTO embeddings_openai (id, entry_id, chunk, embedding) VALUES (%s, %s, %s, %s::VECTOR)", (unique_id, project_id, chunk, embedding))
             local_counter += 1
         conn.commit()
         log(f"Done -> Project {project['title']}")
 
+def process_use_case(use_case,id):
+    local_counter = 0
+    with psycopg2.connect(**db_config) as conn:
+        entry_id = "UC:"+use_case[:20]+"#"+hashlib.md5(use_case.encode()).hexdigest()
+        if entry_id_exists(entry_id, conn):
+            log(f"Skipping -> Use Case {entry_id} already exists in the table.")
+            return
+
+        chunks = chunk_splitter(use_case)
+
+        log(f"Starting -> {len(chunks)} chunks for project {entry_id}.")
+        sentence_embeddings = openai_embeddings(model,chunks)
+        c = conn.cursor()
+        for chunk, embedding in zip(chunks, sentence_embeddings):
+            unique_id = id*1000000 + local_counter
+            chunk = chunk.replace('\x00', ' ')  # Replace NUL characters with a space
+            c.execute("INSERT INTO embeddings_openai (id, entry_id, chunk, embedding) VALUES (%s, %s, %s, %s::VECTOR)", (unique_id, entry_id, chunk, embedding))
+            local_counter += 1
+        conn.commit()
+        log(f"Done -> Project {entry_id}")
 
 
 
 
-# In[7]:
+# In[25]:
 
 
 if __name__ == "__main__":
-    reset_db = False #drop table and create new one
+    reset_db = True #drop table and create new one
 
     # Database configuration
-    db_config = {
-        'dbname': 'wb_s2_embeddings',
-        'user': 's2',
-        'password': 'wb@s2',
-        'host': 'localhost',
-        'port': 5432
-    }
+    config = configparser.ConfigParser()
+    config.read('config.ini')
 
-    model="text-embedding-ada-002"
+    db_config = {
+        'database':   config['DB']['database'],
+        'user':     config['DB']['username'],
+        'password': config['DB']['password'],
+        'host':     config['DB']['host'],
+        'port':     int(config['DB']['port'])
+    }  
+
+    
+    model = config['OPENAI']['model']
 
 
 
@@ -211,24 +236,41 @@ if __name__ == "__main__":
             log("Resetting database.")
             c.execute("DROP TABLE IF EXISTS embeddings_openai;")
             c.execute("DROP SEQUENCE IF EXISTS embeddings_openai_id_seq;")
+        c.execute("CREATE EXTENSION IF NOT EXISTS vector;")
         c.execute('CREATE SEQUENCE IF NOT EXISTS embeddings_openai_id_seq;')
-        c.execute(f'CREATE TABLE IF NOT EXISTS embeddings_openai (id INTEGER PRIMARY KEY DEFAULT nextval(\'embeddings_openai_id_seq\'), project_id TEXT, chunk TEXT, embedding VECTOR({EMBEDDING_SIZE}));')
+        c.execute(f'CREATE TABLE IF NOT EXISTS embeddings_openai (id INTEGER PRIMARY KEY DEFAULT nextval(\'embeddings_openai_id_seq\'), entry_id TEXT, chunk TEXT, embedding VECTOR({EMBEDDING_SIZE}));')
         
         conn.commit()
 
 
-    # Load the projects
-    with open("digital_agriculture_projects.json", "r") as f:
-        projects = json.load(f)
+    # ingest projects
+    # projects_file = "data/digital_agriculture_projects.json"
+    # with open(projects_file, "r") as f:
+    #     projects = json.load(f)
+    #    #Process texts and save embeddings into the database using 8 threads
+    # with ThreadPoolExecutor(max_workers=2) as executor:
+    #     for i, _ in enumerate(executor.map(process_project, range(len(projects[:])), projects[:])):
+    #         pass 
+    
+    # ingest use cases
+    use_cases_file = "data/digital_agriculture_use_cases.json"
+    with open(use_cases_file, "r") as f:
+        use_cases = json.load(f)
 
+    for id,use_case in enumerate(use_cases,1):
+        process_use_case(use_case,id)
+
+    # ingest datasets
 
     # Initialize counter and lock
     counter = 1
     counter_lock = Lock()
 
 
-    #Process texts and save embeddings into the database using 8 threads
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        for i, _ in enumerate(executor.map(process_project, range(len(projects[:])), projects[:])):
-            pass
+
+
+# In[ ]:
+
+
+
 

@@ -137,3 +137,4 @@ text_files/
 .DS_Store
 *.sql
 static/supabase/.env.local
+data/
