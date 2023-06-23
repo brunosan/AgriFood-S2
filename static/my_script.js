@@ -18,8 +18,9 @@ $(document).ready(function () {
             const query = $('#search-input').val().trim();
             //console.log(query);
             const results = await fetchProjects(query);
-            //console.log(results);
+            console.log(results);
             await displayResults(results);
+            await updateSummary(results);
         } catch (error) {
             console.error('Error:', error);
             $(".spinner").hide();
@@ -131,3 +132,27 @@ async function fetchProjects(query) {
     }
   }
   
+  function updateSummary(results) {
+    const numResults = results.length;
+    let summaryText = `Found ${numResults} matching results.`;
+    const req = {'query': query, 'results': results};
+    try {
+      //console.log('Fetching projects...')
+      const response = await $.ajax({
+        method: 'POST',
+        url: 'https://afptefjaljkghrsmuyrf.functions.supabase.co/s3-summary', // Update this URL to match your Edge Function endpoint
+        contentType: 'application/json',
+        headers: {
+            'Authorization': `Bearer ${SUPABASE_PUBLIC_KEY}`,
+          },
+        data: JSON.stringify({ req }),
+      });
+      //console.log('response: ', response)
+      return response;
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      return [];
+    }
+  }
+    document.getElementById("summary-section").innerHTML = summaryText;
+  }

@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[104]:
+# In[ ]:
 
 
 import psycopg2
 import json
 import numpy as np
 import openai
+import configparser
 
 #importing local modules
 from tokenize_sentences2db import openai_embeddings,log
@@ -87,13 +88,6 @@ def manage_results(projects,query,results):
     return summary, results_text
 
 
-# In[103]:
-
-
-
-
-
-
 # In[ ]:
 
 
@@ -102,13 +96,16 @@ if __name__ == "__main__":
     number_of_results = 5
 
     # Database configuration
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+
     db_config = {
-        'dbname': 'wb_s2_embeddings',
-        'user': 's2',
-        'password': 'wb@s2',
-        'host': 'localhost',
-        'port': 5432
-    }
+        'dbname':   config['DB']['dbname'],
+        'user':     config['DB']['user'],
+        'password': config['DB']['password'],
+        'host':     config['DB']['host'],
+        'port':     int(config['DB']['port'])
+    }  
 
     # Load the projects
     with open("digital_agriculture_projects.json", "r") as f:
@@ -121,4 +118,10 @@ if __name__ == "__main__":
     # Print the summary
     log(summary)
     log(results_text)
+
+
+# In[ ]:
+
+
+
 
